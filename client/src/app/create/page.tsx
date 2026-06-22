@@ -55,7 +55,7 @@ export default function CreateCampaignPage() {
 
     try {
       // Create on-chain campaign
-      const id = await createCampaign(
+      const { id, error } = await createCampaign(
         address,
         formData.title,
         goalInSmallest,
@@ -64,7 +64,7 @@ export default function CreateCampaignPage() {
       );
 
       if (id === null) {
-        setError("Failed to create campaign on-chain. Please try again.");
+        setError(error || "Failed to create campaign on-chain. Please try again.");
         return;
       }
 

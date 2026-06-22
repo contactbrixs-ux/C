@@ -122,8 +122,8 @@ export default function CampaignDetailPage({
         setActionError("Please enter a valid amount");
         return;
       }
-      const success = await contribute(address, campaignId, amount);
-      if (success) {
+      const { success: contributed, error: contribError } = await contribute(address, campaignId, amount);
+      if (contributed) {
         setActionSuccess(
           `Successfully contributed ${contributeAmount} XLM!`
         );
@@ -134,7 +134,7 @@ export default function CampaignDetailPage({
         const contrib = await getContribution(campaignId, address);
         setContribution(contrib);
       } else {
-        setActionError("Transaction failed. Please try again.");
+        setActionError(contribError || "Transaction failed. Please try again.");
       }
     } catch (err: any) {
       setActionError(err?.message || "An error occurred");
@@ -150,13 +150,13 @@ export default function CampaignDetailPage({
     setActionSuccess(null);
 
     try {
-      const success = await withdraw(address, campaignId);
-      if (success) {
+      const { success: withdrew, error: withdrawError } = await withdraw(address, campaignId);
+      if (withdrew) {
         setActionSuccess("Funds withdrawn successfully!");
         const updated = await getCampaign(campaignId);
         if (updated) setCampaign(updated);
       } else {
-        setActionError("Withdrawal failed.");
+        setActionError(withdrawError || "Withdrawal failed.");
       }
     } catch (err: any) {
       setActionError(err?.message || "An error occurred");
@@ -172,13 +172,13 @@ export default function CampaignDetailPage({
     setActionSuccess(null);
 
     try {
-      const success = await refund(address, campaignId);
-      if (success) {
+      const { success: refunded, error: refundError } = await refund(address, campaignId);
+      if (refunded) {
         setActionSuccess("Refund claimed successfully!");
         const contrib = await getContribution(campaignId, address);
         setContribution(contrib);
       } else {
-        setActionError("Refund failed.");
+        setActionError(refundError || "Refund failed.");
       }
     } catch (err: any) {
       setActionError(err?.message || "An error occurred");

@@ -56,20 +56,38 @@ async function signWithFreighter(txXdr: string): Promise<{ signedTxXdr: string; 
 
 // === Execute a state-changing transaction: simulate → sign → send → wait for result ===
 
+interface TxResult<T> {
+  success: boolean;
+  result?: T;
+  error?: string;
+}
+
 async function executeTx<T>(
   action: (client: Client) => Promise<import("contract").contract.AssembledTransaction<T>>
-): Promise<{ success: boolean; result?: T }> {
+): Promise<TxResult<T>> {
   try {
     const client = createClient();
     const tx = await action(client);
     const sent = await tx.signAndSend();
-    return {
-      success: sent.getTransactionResponse?.status === "SUCCESS",
-      result: sent.result,
-    };
-  } catch (err) {
+    const success = sent.getTransactionResponse?.status === "SUCCESS";
+    let result: T | undefined;
+    try {
+      result = sent.result;
+    } catch (parseErr) {
+      // result stays undefined; success already reflects the transaction outcome
+      if (!success) {
+        return {
+          success: false,
+          error: `Transaction failed with status: ${sent.getTransactionResponse?.status ?? "unknown"}`,
+        };
+      }
+    }
+    return { success, result };
+  } catch (err: any) {
+    const message =
+      err?.message ?? err?.toString?.() ?? "Unknown error";
     console.error("Transaction failed:", err);
-    return { success: false };
+    return { success: false, error: message };
   }
 }
 
@@ -83,8 +101,8 @@ export function useContract() {
       goal: bigint,
       deadline: bigint,
       token: string
-    ): Promise<number | null> => {
-      const { success, result } = await executeTx<bigint>((client) =>
+    ): Promise<{ id: number | null; error?: string }> => {
+      const { success, result, error } = await executeTx<bigint>((client) =>
         client.create_campaign(
           {
             creator,
@@ -93,59 +111,71 @@ export function useContract() {
             deadline: deadline as unknown as u64,
             token,
           },
-          { signTransaction: signWithFreighter }
+          {
+            publicKey: creator,
+            signTransaction: signWithFreighter,
+          }
         )
       );
       if (success && result != null) {
-        return Number(result.toString());
+        return { id: Number(result.toString()) };
       }
-      return null;
+      return { id: null, error };
     },
     []
   );
 
   const contribute = useCallback(
-    async (contributor: string, campaignId: number, amount: bigint): Promise<boolean> => {
-      const { success } = await executeTx((client) =>
+    async (contributor: string, campaignId: number, amount: bigint): Promise<{ success: boolean; error?: string }> => {
+      const { success, error } = await executeTx((client) =>
         client.contribute(
           {
             contributor,
             campaign_id: campaignId as unknown as u64,
             amount: amount as unknown as i128,
           },
-          { signTransaction: signWithFreighter }
+          {
+            publicKey: contributor,
+            signTransaction: signWithFreighter,
+          }
         )
       );
-      return success;
+      return { success, error };
     },
     []
   );
 
   const withdraw = useCallback(
-    async (creator: string, campaignId: number): Promise<boolean> => {
-      const { success } = await executeTx((client) =>
+    async (creator: string, campaignId: number): Promise<{ success: boolean; error?: string }> => {
+      const { success, error } = await executeTx((client) =>
         client.withdraw(
           { campaign_id: campaignId as unknown as u64 },
-          { signTransaction: signWithFreighter }
+          {
+            publicKey: creator,
+            signTransaction: signWithFreighter,
+          }
         )
       );
-      return success;
+      return { success, error };
     },
     []
   );
 
   const refund = useCallback(
-    async (contributor: string, campaignId: number): Promise<boolean> => {
-      const { success } = await executeTx((client) =>
+    async (contributor: string, campaignId: number): Promise<{ success: boolean; error?: string }> => {
+      const { success, error } = await executeTx((client) =>
         client.refund(
           {
             campaign_id: campaignId as unknown as u64,
             contributor,
           },
-          { signTransaction: signWithFreighter }
+          {
+            publicKey: contributor,
+            signTransaction: signWithFreighter,
+          }
         )
       );
-      return success;
+      return { success, error };
     },
     []
   );
