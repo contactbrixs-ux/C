@@ -26,7 +26,7 @@ export default function CreateCampaignPage() {
 
   // Default token (XLM address on testnet)
   const XLM_TOKEN_ADDRESS = process.env.NEXT_PUBLIC_XLM_TOKEN || 
-    "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2Q2AT2N3NVC57TCY7B";
+    "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
 
   const categories = [
     "Technology",
